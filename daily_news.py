@@ -2,6 +2,7 @@ import streamlit as st
 import requests
 from bs4 import BeautifulSoup
 import openai
+import re
 
 openai_api_key = st.secrets.get("OPENAI_API_KEY", "")
 app_password = st.secrets.get("NEWS_SUMMARY_PASSWORD", "")
@@ -25,6 +26,35 @@ def get_google_news_rss(query="stock market", limit=12):
             break
     return news_items
 
+def extract_keywords(news_items, openai_api_key, lang="he"):
+    stories = ""
+    for item in news_items:
+        stories += f"{item['idx']}. {item['title']}\n{item['desc']}\n\n"
+    if lang == "he":
+        prompt = (
+            "קבל כותרות ותקצירים של חדשות שוק ההון. "
+            "החזר רשימה של 5-8 מילות מפתח (בלי #), שמייצגות נושאים מרכזיים שמופיעים בחדשות היום. "
+            "רשום כל מילה או צירוף מילים בפסיק, בלי הסברים, רק את המילים עצמן.\n\n"
+            f"{stories}"
+        )
+    else:
+        prompt = (
+            "Below are today's main stock market news headlines and summaries. "
+            "Return a list of 5-8 main keywords or key phrases (without #), summarizing the key topics of the day. "
+            "Write them comma separated, no explanation, only the words or phrases.\n\n"
+            f"{stories}"
+        )
+    client = openai.OpenAI(api_key=openai_api_key)
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=100,
+        temperature=0.4
+    )
+    # מחזיר רשימת מילים (ולא שורה אחת)
+    keywords = [k.strip() for k in response.choices[0].message.content.split(',') if k.strip()]
+    return keywords
+
 def summarize_news(news_items, openai_api_key, lang="he"):
     stories = ""
     for item in news_items:
@@ -34,6 +64,7 @@ def summarize_news(news_items, openai_api_key, lang="he"):
             "אתה עורך חדשות פיננסיות. להלן כותרות ותקצירים של חדשות שוק ההון מהיום (ממקורות שונים, ייתכן חפיפות). "
             "כתוב סיכום יומי מפורט ב־5 בולטים עיקריים, כאשר כל בולט הוא פסקה קצרה (שורה־שתיים) שמסבירה מה קרה, למה זה משמעותי ולמי זה נוגע. "
             "בסוף כל בולט, ציין בסוגריים את מספרי החדשות הרלוונטיים (למשל (1), (2,4)). "
+            "הימנע מלפתוח כל פסקה במילים 'ה־' או 'ה' כדי שהתצוגה תהיה נקייה יותר. "
             "הסיכום צריך לאפשר להבין הכל בלי לקרוא את הכתבות עצמן.\n\n"
             f"{stories}"
         )
@@ -43,6 +74,7 @@ def summarize_news(news_items, openai_api_key, lang="he"):
             "Write a concise daily market summary in 5 main bullets. "
             "Each bullet should be a short paragraph that covers the key fact, the market context, and what it means for investors, using ONLY the information below. "
             "At the end of each bullet, in parentheses, list the news item numbers you used (e.g., (1), (3,6)). "
+            "Avoid starting each paragraph with 'The' for a cleaner appearance. "
             "This summary should give the reader a complete and focused understanding of today's market events without needing to read the articles themselves.\n\n"
             f"{stories}"
         )
@@ -56,15 +88,15 @@ def summarize_news(news_items, openai_api_key, lang="he"):
     return response.choices[0].message.content.strip()
 
 def render_bullets_with_buttons(summary_text, news_items, lang="he"):
-    import re
     idx_to_url = {item['idx']: item['url'] for item in news_items}
     lines = [line.strip() for line in summary_text.split('\n') if line.strip()]
     label = "לכתבה" if lang == "he" else "Article"
     for i, line in enumerate(lines, 1):
+        # מסיר 'ה־' או 'ה' בתחילת שורה אם נשאר
+        line = re.sub(r"^ה[־ ]", "", line.strip())
         m = re.search(r'\(([\d, ]+)\)', line)
         if m:
             nums = [int(x.strip()) for x in m.group(1).split(',')]
-            # מחליף את (1,2) וכד' – בסוף המשפט
             bullet_text = line.replace(m.group(0), "")
             st.markdown(
                 f"""<div style="direction:rtl;text-align:right;font-size:1.15em;margin-bottom:18px;
@@ -108,6 +140,18 @@ lang_code = "he" if lang == "עברית" else "en"
 if st.button("עדכן והצג חדשות אחרונות"):
     with st.spinner("טוען חדשות מ-Google News..."):
         news = get_google_news_rss(query="stock market", limit=12)
+    with st.spinner("מזהה מילות מפתח עיקריות..."):
+        keywords = extract_keywords(news, openai_api_key, lang=lang_code)
+    if keywords:
+        st.markdown(
+            "<div style='direction:rtl;text-align:right; margin-bottom:8px; margin-top:8px;'>"
+            + " ".join(
+                [f"<span style='display:inline-block; margin-left:6px; background:#f0f4fc; color:#2251a2; font-weight:bold; padding:4px 15px; border-radius:13px; font-size:1.05em;'>{k}</span>"
+                 for k in keywords]
+            )
+            + "</div>",
+            unsafe_allow_html=True
+        )
     with st.spinner("מסכם עם GPT..."):
         summary = summarize_news(news, openai_api_key, lang=lang_code)
     st.subheader("סיכום יומי")
@@ -126,4 +170,3 @@ if st.button("עדכן והצג חדשות אחרונות"):
             )
 else:
     st.info("לחץ על הכפתור כדי להציג את הסיכום היומי.")
-
