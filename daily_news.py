@@ -132,9 +132,28 @@ if user_pass != app_password:
 lang = st.radio("בחר שפת סיכום:", ["עברית", "English"], horizontal=True)
 lang_code = "he" if lang == "עברית" else "en"
 
-if st.button("עדכן והצג חדשות אחרונות"):
+st.markdown(
+    "<div style='direction:rtl;text-align:right; margin-bottom:5px; margin-top:10px;'><b>באפשרותך לבחור:</b></div>",
+    unsafe_allow_html=True
+)
+
+col1, col2, _ = st.columns([2.2, 2, 2])
+with col1:
+    general_news = st.button("סיכום שוק כללי")
+with col2:
+    stock_name = st.text_input("שם מניה (באנגלית או סימול):", value="", key="stock_input", placeholder="למשל: NVDA")
+    stock_news = st.button("סיכום עבור מניה זו")
+
+if general_news or stock_news:
+    if general_news:
+        query = "stock market"
+        title_for_summary = "סיכום יומי"
+    else:
+        query = stock_name.strip() if stock_name.strip() else "stock market"
+        title_for_summary = f"סיכום חדשות עבור {query.upper()}" if stock_name.strip() else "סיכום יומי"
+
     with st.spinner("טוען חדשות מ-Google News..."):
-        news = get_google_news_rss(query="stock market", limit=12)
+        news = get_google_news_rss(query=query, limit=12)
     with st.spinner("מזהה מילות מפתח עיקריות..."):
         keywords = extract_keywords(news, openai_api_key, lang=lang_code)
     if keywords:
@@ -149,9 +168,8 @@ if st.button("עדכן והצג חדשות אחרונות"):
         )
     with st.spinner("מסכם עם GPT..."):
         summary = summarize_news(news, openai_api_key, lang=lang_code)
-    st.subheader("סיכום יומי")
+    st.subheader(title_for_summary)
     render_bullets_with_buttons(summary, news, lang=lang_code)
-    # אופציה: בלחיצה, להציג גם את הרשימה הגולמית
     with st.expander("הצג את רשימת כל הכותרות (לא חובה)", expanded=False):
         for n in news:
             desc_to_show = n["desc"].strip()
@@ -164,4 +182,4 @@ if st.button("עדכן והצג חדשות אחרונות"):
                 unsafe_allow_html=True
             )
 else:
-    st.info("לחץ על הכפתור כדי להציג את הסיכום היומי.")
+    st.info("לחץ על אחד מהכפתורים כדי להציג את הסיכום היומי.")
