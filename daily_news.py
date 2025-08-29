@@ -6,31 +6,23 @@ import openai
 openai_api_key = st.secrets.get("OPENAI_API_KEY", "")
 app_password = st.secrets.get("NEWS_SUMMARY_PASSWORD", "")
 
-def get_yahoo_finance_news(limit=12):
-    url = "https://finance.yahoo.com/news/"
+def get_google_news_rss(query="stock market", limit=12):
+    url = f"https://news.google.com/rss/search?q={query.replace(' ', '+')}&hl=en-US&gl=US&ceid=US:en"
     response = requests.get(url)
-    soup = BeautifulSoup(response.text, "html.parser")
+    soup = BeautifulSoup(response.content, features='xml')
     news_items = []
-    seen = set()
-    for idx, item in enumerate(soup.find_all('li', {'class': 'js-stream-content'})):
-        title_tag = item.find('h3')
-        desc_tag = item.find('p')
-        link_tag = item.find('a', href=True)
-        if title_tag and link_tag:
-            title = title_tag.get_text(strip=True)
-            url = "https://finance.yahoo.com" + link_tag['href']
-            if title in seen:
-                continue
-            seen.add(title)
-            desc = desc_tag.get_text(strip=True) if desc_tag else ""
-            news_items.append({
-                'title': title,
-                'desc': desc,
-                'url': url,
-                'idx': idx+1 # סידור לזיהוי בולטים
-            })
-            if len(news_items) >= limit:
-                break
+    for idx, item in enumerate(soup.find_all('item')):
+        title = item.title.text
+        desc = item.description.text
+        link = item.link.text
+        news_items.append({
+            'title': title,
+            'desc': desc,
+            'url': link,
+            'idx': idx+1
+        })
+        if len(news_items) >= limit:
+            break
     return news_items
 
 def summarize_news(news_items, openai_api_key):
@@ -38,12 +30,12 @@ def summarize_news(news_items, openai_api_key):
     for item in news_items:
         stories += f"{item['idx']}. {item['title']}\n{item['desc']}\n\n"
     prompt = (
-        "Here are stock market news items from Yahoo Finance today. "
+        "Here are the latest stock market news items. "
         "Each item has a headline and summary. "
         "Summarize in up to 5 concise bullet points (in English), ONLY using the provided news items, without adding news or context that doesn't appear here. "
-        "For each bullet, mention the number of the related news item in parentheses. "
+        "For each bullet, mention the number(s) of the related news item(s) in parentheses. "
         "Example: (3) or (1,4) if more than one. "
-        "Do NOT add news about Israel or any other topic that is not shown in the news below.\n\n"
+        "Do NOT add news that is not shown in the news below.\n\n"
         f"{stories}"
     )
     client = openai.OpenAI(api_key=openai_api_key)
@@ -60,40 +52,34 @@ def render_bullets_with_links(summary_text, news_items):
     lines = summary_text.splitlines()
     new_bullets = []
     for line in lines:
-        # מוצא מספר בסוף הבולט (או בפנים) - דוג' (3), (2,4)
         import re
         m = re.search(r'\(([\d, ]+)\)', line)
         if m:
             nums = [int(x.strip()) for x in m.group(1).split(',')]
-            # מוסיף קישורים (אם קיימים)
             links = []
             for n in nums:
                 url = idx_to_url.get(n)
                 if url:
                     links.append(f"[לכתבה {n}]({url})")
             links_str = " ".join(links)
-            # שם הבולט בימין (rtl) ומוסיף קישור
-            bullet_text = line.replace(m.group(0), "")  # מוריד את ה-(X)
+            bullet_text = line.replace(m.group(0), "")
             new_bullets.append(
                 f'<li style="direction:rtl;text-align:right;font-size:1.1em;">{bullet_text} <span style="font-size:0.9em;">{links_str}</span></li>'
             )
         else:
-            # בולט בלי מספרים
             new_bullets.append(
                 f'<li style="direction:rtl;text-align:right;font-size:1.1em;">{line}</li>'
             )
     html = "<ul>" + "\n".join(new_bullets) + "</ul>"
     st.markdown(html, unsafe_allow_html=True)
 
-# -- אפליקציית סטרימליט --
 st.set_page_config(page_title="סיכום חדשות שוק ההון", page_icon="💹", layout="centered")
-st.title("💹 סיכום חדשות שוק ההון - Yahoo Finance")
+st.title("💹 סיכום חדשות שוק ההון - Google News")
 
 if not openai_api_key:
     st.error("לא נמצא מפתח OpenAI. יש להכניס אותו ל-secrets.toml תחת OPENAI_API_KEY")
     st.stop()
 
-# -- דרישת סיסמה --
 user_pass = st.text_input("הכנס סיסמה לשימוש במערכת:", type="password")
 if not user_pass:
     st.info("הכנס סיסמה בשביל להמשיך.")
@@ -103,8 +89,8 @@ if user_pass != app_password:
     st.stop()
 
 if st.button("עדכן והצג חדשות אחרונות"):
-    with st.spinner("טוען חדשות מ-Yahoo..."):
-        news = get_yahoo_finance_news(limit=12)
+    with st.spinner("טוען חדשות מ-Google News..."):
+        news = get_google_news_rss(query="stock market", limit=12)
     st.subheader("החדשות העדכניות")
     for n in news:
         st.markdown(
