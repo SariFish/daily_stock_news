@@ -55,34 +55,40 @@ def summarize_news(news_items, openai_api_key, lang="he"):
     )
     return response.choices[0].message.content.strip()
 
-def render_bullets_with_links(summary_text, news_items):
+def render_bullets_with_buttons(summary_text, news_items, lang="he"):
     import re
     idx_to_url = {item['idx']: item['url'] for item in news_items}
-    lines = summary_text.splitlines()
-    new_bullets = []
-    for line in lines:
+    lines = [line.strip() for line in summary_text.split('\n') if line.strip()]
+    label = "לכתבה" if lang == "he" else "Article"
+    for i, line in enumerate(lines, 1):
         m = re.search(r'\(([\d, ]+)\)', line)
         if m:
             nums = [int(x.strip()) for x in m.group(1).split(',')]
-            links = []
-            for n in nums:
-                url = idx_to_url.get(n)
-                if url:
-                    links.append(f"[לכתבה {n}]({url})")
-            links_str = " ".join(links)
+            # מחליף את (1,2) וכד' – בסוף המשפט
             bullet_text = line.replace(m.group(0), "")
-            new_bullets.append(
-                f'<li style="direction:rtl;text-align:right;font-size:1.1em;margin-bottom:12px;">{bullet_text} <span style="font-size:0.9em;">{links_str}</span></li>'
+            st.markdown(
+                f"""<div style="direction:rtl;text-align:right;font-size:1.15em;margin-bottom:18px;
+                border-radius:10px;background-color:#F9F9FB;padding:13px 18px;">
+                {bullet_text}
+                <div style="margin-top:7px;">""" +
+                "".join([
+                    f"""<a href="{idx_to_url[n]}" target="_blank">
+                        <button style='margin-left:7px;margin-bottom:2px;
+                        background:#2557a7;color:#fff;padding:3.2px 15px;border:none;
+                        border-radius:12px;font-size:0.92em;cursor:pointer;'>
+                        {label} {n}</button></a>""" for n in nums if n in idx_to_url
+                ]) +
+                """</div></div>""", unsafe_allow_html=True
             )
         else:
-            new_bullets.append(
-                f'<li style="direction:rtl;text-align:right;font-size:1.1em;margin-bottom:12px;">{line}</li>'
+            st.markdown(
+                f"""<div style="direction:rtl;text-align:right;font-size:1.15em;margin-bottom:18px;
+                border-radius:10px;background-color:#F9F9FB;padding:13px 18px;">{line}</div>""",
+                unsafe_allow_html=True
             )
-    html = "<ul style='padding-right:18px;'>" + "\n".join(new_bullets) + "</ul>"
-    st.markdown(html, unsafe_allow_html=True)
 
 st.set_page_config(page_title="סיכום חדשות שוק ההון", page_icon="💹", layout="centered")
-st.title("💹 סיכום חדשות שוק ההון - Google News")
+st.title("💹 סיכום חדשות שוק ההון")
 
 if not openai_api_key:
     st.error("לא נמצא מפתח OpenAI. יש להכניס אותו ל-secrets.toml תחת OPENAI_API_KEY")
@@ -102,20 +108,22 @@ lang_code = "he" if lang == "עברית" else "en"
 if st.button("עדכן והצג חדשות אחרונות"):
     with st.spinner("טוען חדשות מ-Google News..."):
         news = get_google_news_rss(query="stock market", limit=12)
-    st.subheader("החדשות העדכניות")
-    for n in news:
-        desc_to_show = n["desc"].strip()
-        show_desc = desc_to_show and desc_to_show != n["title"]
-        st.markdown(
-            f'<div style="direction:rtl;text-align:right; margin-bottom:14px;">'
-            f'<b>{n["idx"]}. <a href="{n["url"]}" target="_blank">{n["title"]}</a></b>'
-            + (f'<br><span style="color: #555;">{desc_to_show}</span>' if show_desc else '') +
-            f'</div>',
-            unsafe_allow_html=True
-        )
     with st.spinner("מסכם עם GPT..."):
         summary = summarize_news(news, openai_api_key, lang=lang_code)
-    st.subheader("סיכום GPT")
-    render_bullets_with_links(summary, news)
+    st.subheader("סיכום יומי")
+    render_bullets_with_buttons(summary, news, lang=lang_code)
+    # אופציה: בלחיצה, להציג גם את הרשימה הגולמית
+    with st.expander("הצג את רשימת כל הכותרות (לא חובה)", expanded=False):
+        for n in news:
+            desc_to_show = n["desc"].strip()
+            show_desc = desc_to_show and desc_to_show != n["title"]
+            st.markdown(
+                f'<div style="direction:rtl;text-align:right; margin-bottom:10px;">'
+                f'<b>{n["idx"]}. <a href="{n["url"]}" target="_blank">{n["title"]}</a></b>'
+                + (f'<br><span style="color: #555;">{desc_to_show}</span>' if show_desc else '') +
+                f'</div>',
+                unsafe_allow_html=True
+            )
 else:
-    st.info("לחץ על הכפתור כדי להציג את החדשות האחרונות והסיכום.")
+    st.info("לחץ על הכפתור כדי להציג את הסיכום היומי.")
+
