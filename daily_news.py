@@ -53,27 +53,48 @@ def extract_keywords(news_items, openai_api_key, lang="he"):
     keywords = [k.strip() for k in response.choices[0].message.content.split(',') if k.strip()]
     return keywords
 
-def summarize_news(news_items, openai_api_key, lang="he"):
+def summarize_news(news_items, openai_api_key, lang="he", stock=None):
     stories = ""
     for item in news_items:
         stories += f"{item['idx']}. {item['title']}\n{item['desc']}\n\n"
-    if lang == "he":
-        prompt = (
-            "אתה עורך חדשות פיננסיות. להלן כותרות ותקצירים של חדשות שוק ההון מהיום (ממקורות שונים, ייתכן חפיפות). "
-            "כתוב סיכום יומי מפורט ב־5 בולטים עיקריים, כאשר כל בולט הוא פסקה קצרה (שורה־שתיים) שמסבירה מה קרה, למה זה משמעותי ולמי זה נוגע. "
-            "בסוף כל בולט, ציין בסוגריים את מספרי החדשות הרלוונטיים (למשל (1), (2,4)). "
-            "הסיכום צריך לאפשר להבין הכל בלי לקרוא את הכתבות עצמן.\n\n"
-            f"{stories}"
-        )
+    if stock:
+        # מודגש בקונטקסט שמדובר במניה/סימול
+        if lang == "he":
+            prompt = (
+                f"אתה עורך חדשות פיננסיות. להלן כותרות ותקצירים של חדשות מהיום על מניית {stock.upper()} (ממקורות שונים, ייתכן חפיפות). "
+                "כתוב סיכום יומי ממוקד במניה בלבד ב־5 בולטים עיקריים, כאשר כל בולט הוא פסקה קצרה (שורה־שתיים) שמסבירה מה קרה סביב המניה, למה זה משמעותי ולמי זה נוגע. "
+                "בסוף כל בולט, ציין בסוגריים את מספרי החדשות הרלוונטיים (למשל (1), (2,4)). "
+                "הסיכום צריך להתייחס רק למידע שמופיע למטה, ולא לדבר על 'אפליקציות' או נושאים שאינם קשורים ישירות למניה זו.\n\n"
+                f"{stories}"
+            )
+        else:
+            prompt = (
+                f"You are a financial news editor. Below are today's news headlines and summaries about the stock {stock.upper()} (from multiple sources, some may be similar). "
+                "Write a focused daily summary in 5 main bullets about this company/ticker only. "
+                "Each bullet should be a short paragraph about the facts, the context, and investor implications, using ONLY the information below. "
+                "At the end of each bullet, in parentheses, list the news item numbers used. "
+                "Do not summarize any news that is not directly related to this stock. "
+                "Do not write about apps in general, only about the company/stock.\n\n"
+                f"{stories}"
+            )
     else:
-        prompt = (
-            "You are a financial news editor. Below are today's major stock market news headlines and summaries (from multiple sources, some may be similar). "
-            "Write a concise daily market summary in 5 main bullets. "
-            "Each bullet should be a short paragraph that covers the key fact, the market context, and what it means for investors, using ONLY the information below. "
-            "At the end of each bullet, in parentheses, list the news item numbers you used (e.g., (1), (3,6)). "
-            "This summary should give the reader a complete and focused understanding of today's market events without needing to read the articles themselves.\n\n"
-            f"{stories}"
-        )
+        if lang == "he":
+            prompt = (
+                "אתה עורך חדשות פיננסיות. להלן כותרות ותקצירים של חדשות שוק ההון מהיום (ממקורות שונים, ייתכן חפיפות). "
+                "כתוב סיכום יומי מפורט ב־5 בולטים עיקריים, כאשר כל בולט הוא פסקה קצרה (שורה־שתיים) שמסבירה מה קרה, למה זה משמעותי ולמי זה נוגע. "
+                "בסוף כל בולט, ציין בסוגריים את מספרי החדשות הרלוונטיים (למשל (1), (2,4)). "
+                "הסיכום צריך לאפשר להבין הכל בלי לקרוא את הכתבות עצמן.\n\n"
+                f"{stories}"
+            )
+        else:
+            prompt = (
+                "You are a financial news editor. Below are today's major stock market news headlines and summaries (from multiple sources, some may be similar). "
+                "Write a concise daily market summary in 5 main bullets. "
+                "Each bullet should be a short paragraph that covers the key fact, the market context, and what it means for investors, using ONLY the information below. "
+                "At the end of each bullet, in parentheses, list the news item numbers you used (e.g., (1), (3,6)). "
+                "This summary should give the reader a complete and focused understanding of today's market events without needing to read the articles themselves.\n\n"
+                f"{stories}"
+            )
     client = openai.OpenAI(api_key=openai_api_key)
     response = client.chat.completions.create(
         model="gpt-4o",
@@ -133,24 +154,32 @@ lang = st.radio("בחר שפת סיכום:", ["עברית", "English"], horizont
 lang_code = "he" if lang == "עברית" else "en"
 
 st.markdown(
-    "<div style='direction:rtl;text-align:right; margin-bottom:5px; margin-top:10px;'><b>באפשרותך לבחור:</b></div>",
-    unsafe_allow_html=True
+    """
+    <div style='direction:rtl;text-align:right; margin-bottom:15px; margin-top:16px; font-size:1.17em; font-weight:bold;'>
+        באפשרותך לבחור:
+    </div>
+    """, unsafe_allow_html=True
 )
 
-col1, col2, _ = st.columns([2.2, 2, 2])
-with col1:
-    general_news = st.button("סיכום שוק כללי")
-with col2:
-    stock_name = st.text_input("שם מניה (באנגלית או סימול):", value="", key="stock_input", placeholder="למשל: NVDA")
-    stock_news = st.button("סיכום עבור מניה זו")
+with st.container():
+    cols = st.columns([2, 2, 3])
+    with cols[0]:
+        general_news = st.button("סיכום שוק כללי", use_container_width=True)
+    with cols[1]:
+        stock_name = st.text_input("שם מניה (באנגלית או סימול):", value="", key="stock_input", placeholder="למשל: NVDA")
+        stock_news = st.button("סיכום עבור מניה זו", use_container_width=True)
+    with cols[2]:
+        st.markdown("")
 
 if general_news or stock_news:
     if general_news:
         query = "stock market"
         title_for_summary = "סיכום יומי"
+        stock_context = None
     else:
-        query = stock_name.strip() if stock_name.strip() else "stock market"
-        title_for_summary = f"סיכום חדשות עבור {query.upper()}" if stock_name.strip() else "סיכום יומי"
+        query = f"{stock_name.strip()} stock" if stock_name.strip() else "stock market"
+        title_for_summary = f"סיכום חדשות עבור {stock_name.upper()}" if stock_name.strip() else "סיכום יומי"
+        stock_context = stock_name.strip() if stock_name.strip() else None
 
     with st.spinner("טוען חדשות מ-Google News..."):
         news = get_google_news_rss(query=query, limit=12)
@@ -167,7 +196,7 @@ if general_news or stock_news:
             unsafe_allow_html=True
         )
     with st.spinner("מסכם עם GPT..."):
-        summary = summarize_news(news, openai_api_key, lang=lang_code)
+        summary = summarize_news(news, openai_api_key, lang=lang_code, stock=stock_context)
     st.subheader(title_for_summary)
     render_bullets_with_buttons(summary, news, lang=lang_code)
     with st.expander("הצג את רשימת כל הכותרות (לא חובה)", expanded=False):
