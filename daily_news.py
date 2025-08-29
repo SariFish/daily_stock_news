@@ -187,12 +187,28 @@ def render_bullets_with_buttons(summary_text, news_items, lang="he"):
             )
 
 st.set_page_config(page_title="סיכום חדשות שוק ההון", page_icon="💹", layout="centered")
-st.markdown("""
-    <div class='main-ellipse'>
-        <span class='ellipse-title'>בחר אפשרות לסיכום:</span>
-    </div>
-""", unsafe_allow_html=True)
+# **שורת ה-title הוסרה כאן**
 
+# ---- אליפסה עם כותרת בפנים ----
+st.markdown(
+    """
+    <div class='main-ellipse'>
+        <span class='ellipse-title'>
+            <span style='font-size:1.13em; margin-left:10px;'>💹</span>
+            בחר אפשרות לסיכום:
+        </span>
+    </div>
+    """, unsafe_allow_html=True
+)
+
+# ---- כרטיס עיצוב מרכזי ----
+with st.container():
+    st.markdown("<div class='main-card'>", unsafe_allow_html=True)
+    general_news = st.button("סיכום שוק כללי", use_container_width=True)
+    st.markdown("<hr style='border:none;border-top:1.5px solid #e4e7f0;margin:15px 0 18px 0;'>", unsafe_allow_html=True)
+    stock_name = st.text_input("שם מניה (באנגלית או סימול):", value="", key="stock_input", placeholder="למשל: NVDA")
+    stock_news = st.button("סיכום עבור מניה זו", use_container_width=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
 if not openai_api_key:
     st.error("לא נמצא מפתח OpenAI. יש להכניס אותו ל-secrets.toml תחת OPENAI_API_KEY")
@@ -208,24 +224,6 @@ if user_pass != app_password:
 
 lang = st.radio("בחר שפת סיכום:", ["עברית", "English"], horizontal=True)
 lang_code = "he" if lang == "עברית" else "en"
-
-# ---- אליפסה עם הכותרת בפנים ----
-st.markdown(
-    """
-    <div class='main-ellipse'>
-        <span class='ellipse-title'>בחר אפשרות לסיכום:</span>
-    </div>
-    """, unsafe_allow_html=True
-)
-
-# ---- כרטיס עיצוב מרכזי ----
-with st.container():
-    st.markdown("<div class='main-card'>", unsafe_allow_html=True)
-    general_news = st.button("סיכום שוק כללי", use_container_width=True)
-    st.markdown("<hr style='border:none;border-top:1.5px solid #e4e7f0;margin:15px 0 18px 0;'>", unsafe_allow_html=True)
-    stock_name = st.text_input("שם מניה (באנגלית או סימול):", value="", key="stock_input", placeholder="למשל: NVDA")
-    stock_news = st.button("סיכום עבור מניה זו", use_container_width=True)
-    st.markdown("</div>", unsafe_allow_html=True)
 
 if general_news or stock_news:
     if general_news:
