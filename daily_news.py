@@ -6,14 +6,16 @@ import openai
 openai_api_key = st.secrets.get("OPENAI_API_KEY", "")
 app_password = st.secrets.get("NEWS_SUMMARY_PASSWORD", "")
 
-# --- עיצוב: אליפסה מרכזית עם הכותרת בפנים + כל הכרטיסים למטה ---
+st.set_page_config(page_title="סיכום חדשות שוק ההון", page_icon="💹", layout="centered")
+
+# --- CSS עיצוב אליפסה וכרטיס ---
 st.markdown("""
     <style>
     header[data-testid="stHeader"] {background: none;}
     .css-18ni7ap.e8zbici2 {background: none !important; box-shadow: none !important;}
     .main-ellipse {
         direction: rtl;
-        margin: 45px auto 27px auto;
+        margin: 0 auto 27px auto;
         max-width: 600px;
         min-width: 270px;
         min-height: 76px;
@@ -58,6 +60,49 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# === 1. הסיסמה קודמת להכל ===
+user_pass = st.text_input("הכנס סיסמה לשימוש במערכת:", type="password")
+if not user_pass:
+    st.info("הכנס סיסמה בשביל להמשיך.")
+    st.stop()
+if user_pass != app_password:
+    st.error("סיסמה שגויה.")
+    st.stop()
+
+# === 2. כותרת עמוד (מחוץ לאליפסה) ===
+st.markdown(
+    """
+    <div style='direction:rtl; text-align:right; margin-top:20px; margin-bottom:13px; font-size:2.15em; font-weight:800; color:#232439;'>
+        סיכום יומי של חדשות שוק ההון
+    </div>
+    """, unsafe_allow_html=True
+)
+
+# === 3. האליפסה עם אפשרויות סיכום ===
+st.markdown(
+    """
+    <div class='main-ellipse'>
+        <span class='ellipse-title'>
+            <span style='font-size:1.13em; margin-left:10px;'>💹</span>
+            בחר אפשרות לסיכום:
+        </span>
+    </div>
+    """, unsafe_allow_html=True
+)
+
+# === 4. רכיבי סיכום (רק אחרי סיסמה!) ===
+with st.container():
+    st.markdown("<div class='main-card'>", unsafe_allow_html=True)
+    general_news = st.button("סיכום שוק כללי", use_container_width=True)
+    st.markdown("<hr style='border:none;border-top:1.5px solid #e4e7f0;margin:15px 0 18px 0;'>", unsafe_allow_html=True)
+    stock_name = st.text_input("שם מניה (באנגלית או סימול):", value="", key="stock_input", placeholder="למשל: NVDA")
+    stock_news = st.button("סיכום עבור מניה זו", use_container_width=True)
+    st.markdown("</div>", unsafe_allow_html=True)
+
+lang = st.radio("בחר שפת סיכום:", ["עברית", "English"], horizontal=True)
+lang_code = "he" if lang == "עברית" else "en"
+
+# === 5. שאר הלוגיקה ===
 def get_google_news_rss(query="stock market", limit=12):
     url = f"https://news.google.com/rss/search?q={query.replace(' ', '+')}&hl=en-US&gl=US&ceid=US:en"
     response = requests.get(url)
@@ -185,45 +230,6 @@ def render_bullets_with_buttons(summary_text, news_items, lang="he"):
                 border-radius:10px;background-color:#F9F9FB;padding:13px 18px;">{line}</div>""",
                 unsafe_allow_html=True
             )
-
-st.set_page_config(page_title="סיכום חדשות שוק ההון", page_icon="💹", layout="centered")
-# **שורת ה-title הוסרה כאן**
-
-# ---- אליפסה עם כותרת בפנים ----
-st.markdown(
-    """
-    <div class='main-ellipse'>
-        <span class='ellipse-title'>
-            <span style='font-size:1.13em; margin-left:10px;'>💹</span>
-            בחר אפשרות לסיכום:
-        </span>
-    </div>
-    """, unsafe_allow_html=True
-)
-
-# ---- כרטיס עיצוב מרכזי ----
-with st.container():
-    st.markdown("<div class='main-card'>", unsafe_allow_html=True)
-    general_news = st.button("סיכום שוק כללי", use_container_width=True)
-    st.markdown("<hr style='border:none;border-top:1.5px solid #e4e7f0;margin:15px 0 18px 0;'>", unsafe_allow_html=True)
-    stock_name = st.text_input("שם מניה (באנגלית או סימול):", value="", key="stock_input", placeholder="למשל: NVDA")
-    stock_news = st.button("סיכום עבור מניה זו", use_container_width=True)
-    st.markdown("</div>", unsafe_allow_html=True)
-
-if not openai_api_key:
-    st.error("לא נמצא מפתח OpenAI. יש להכניס אותו ל-secrets.toml תחת OPENAI_API_KEY")
-    st.stop()
-
-user_pass = st.text_input("הכנס סיסמה לשימוש במערכת:", type="password")
-if not user_pass:
-    st.info("הכנס סיסמה בשביל להמשיך.")
-    st.stop()
-if user_pass != app_password:
-    st.error("סיסמה שגויה.")
-    st.stop()
-
-lang = st.radio("בחר שפת סיכום:", ["עברית", "English"], horizontal=True)
-lang_code = "he" if lang == "עברית" else "en"
 
 if general_news or stock_news:
     if general_news:
