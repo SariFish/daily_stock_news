@@ -6,19 +6,40 @@ import openai
 openai_api_key = st.secrets.get("OPENAI_API_KEY", "")
 app_password = st.secrets.get("NEWS_SUMMARY_PASSWORD", "")
 
-# --- עיצוב: הסתרת האליפסה בראש הדף ועיצוב הכרטיס הראשי ---
+# --- עיצוב: אליפסה מרכזית עם הכותרת בפנים + כל הכרטיסים למטה ---
 st.markdown("""
     <style>
     header[data-testid="stHeader"] {background: none;}
     .css-18ni7ap.e8zbici2 {background: none !important; box-shadow: none !important;}
+    .main-ellipse {
+        direction: rtl;
+        margin: 45px auto 27px auto;
+        max-width: 600px;
+        min-width: 270px;
+        min-height: 76px;
+        background: linear-gradient(92deg, #f5faff 0%, #f1f2fc 80%);
+        border-radius: 65px;
+        box-shadow: 0 2px 34px 0 #e5eafe94, 0 1.5px 10px 0 #e4e7f0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .main-ellipse .ellipse-title {
+        font-size: 2em;
+        font-weight: bold;
+        color: #2b2c37;
+        padding: 17px 0px;
+        width: 100%;
+        text-align: center;
+    }
     .main-card {
         direction: rtl;
         margin: 0 auto 32px auto;
-        max-width: 440px;
+        max-width: 530px;
         min-width: 340px;
-        border-radius: 25px;
+        border-radius: 23px;
         box-shadow: 0 2px 24px 0 #b1b1c18a;
-        background: linear-gradient(92deg, #f5faff 0%, #f1f2fc 80%);
+        background: #fff;
         padding: 32px 38px 29px 38px;
         text-align: center;
     }
@@ -183,10 +204,18 @@ if user_pass != app_password:
 lang = st.radio("בחר שפת סיכום:", ["עברית", "English"], horizontal=True)
 lang_code = "he" if lang == "עברית" else "en"
 
+# ---- אליפסה עם הכותרת בפנים ----
+st.markdown(
+    """
+    <div class='main-ellipse'>
+        <span class='ellipse-title'>בחר אפשרות לסיכום:</span>
+    </div>
+    """, unsafe_allow_html=True
+)
+
 # ---- כרטיס עיצוב מרכזי ----
 with st.container():
     st.markdown("<div class='main-card'>", unsafe_allow_html=True)
-    st.markdown("<div style='font-size:1.18em; font-weight:bold; margin-bottom:18px;'>בחר אפשרות לסיכום:</div>", unsafe_allow_html=True)
     general_news = st.button("סיכום שוק כללי", use_container_width=True)
     st.markdown("<hr style='border:none;border-top:1.5px solid #e4e7f0;margin:15px 0 18px 0;'>", unsafe_allow_html=True)
     stock_name = st.text_input("שם מניה (באנגלית או סימול):", value="", key="stock_input", placeholder="למשל: NVDA")
