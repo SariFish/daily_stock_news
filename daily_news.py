@@ -187,7 +187,12 @@ def render_bullets_with_buttons(summary_text, news_items, lang="he"):
             )
 
 st.set_page_config(page_title="סיכום חדשות שוק ההון", page_icon="💹", layout="centered")
-st.title("💹 סיכום חדשות שוק ההון")
+st.markdown("""
+    <div class='main-ellipse'>
+        <span class='ellipse-title'>בחר אפשרות לסיכום:</span>
+    </div>
+""", unsafe_allow_html=True)
+
 
 if not openai_api_key:
     st.error("לא נמצא מפתח OpenAI. יש להכניס אותו ל-secrets.toml תחת OPENAI_API_KEY")
