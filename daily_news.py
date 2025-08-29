@@ -3,14 +3,8 @@ import requests
 from bs4 import BeautifulSoup
 import openai
 
-# ===========================
-# קבלת מפתח OpenAI מהסודות
-# ===========================
 openai_api_key = st.secrets.get("OPENAI_API_KEY", "")
 
-# ===========================
-# פונקציה: גרידת חדשות
-# ===========================
 def get_yahoo_finance_news(limit=12):
     url = "https://finance.yahoo.com/news/"
     response = requests.get(url)
@@ -37,9 +31,6 @@ def get_yahoo_finance_news(limit=12):
                 break
     return news_items
 
-# ===========================
-# פונקציה: סיכום עם GPT
-# ===========================
 def summarize_news(news_items, openai_api_key):
     stories = ""
     for i, item in enumerate(news_items, 1):
@@ -49,18 +40,15 @@ def summarize_news(news_items, openai_api_key):
         f"סכם לי ב-5 בולטים קצרים בעברית את עיקרי החדשות החשובות ביותר עבור משקיע ישראלי ממוצע:\n"
         f"{stories}"
     )
-    response = openai.ChatCompletion.create(
+    client = openai.OpenAI(api_key=openai_api_key)
+    response = client.chat.completions.create(
         model="gpt-4o",
         messages=[{"role": "user", "content": prompt}],
-        api_key=openai_api_key,
         max_tokens=400,
         temperature=0.5
     )
     return response.choices[0].message.content.strip()
 
-# ===========================
-# Streamlit UI
-# ===========================
 st.set_page_config(page_title="סיכום חדשות שוק ההון", page_icon="💹", layout="centered")
 st.title("💹 סיכום חדשות שוק ההון - Yahoo Finance")
 
@@ -83,4 +71,3 @@ if st.button("עדכן והצג חדשות אחרונות"):
     st.markdown(summary)
 else:
     st.info("לחץ על הכפתור כדי להציג את החדשות האחרונות והסיכום.")
-
