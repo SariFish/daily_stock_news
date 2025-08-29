@@ -1,3 +1,37 @@
+st.markdown("""
+    <style>
+    /* הסתרת האליפסה/רקע המוזר בראש הדף */
+    header[data-testid="stHeader"] {background: none;}
+    .css-18ni7ap.e8zbici2 {background: none !important; box-shadow: none !important;}
+    .main-card {
+        direction: rtl;
+        margin: 0 auto 32px auto;
+        max-width: 440px;
+        min-width: 340px;
+        border-radius: 25px;
+        box-shadow: 0 2px 24px 0 #b1b1c18a;
+        background: linear-gradient(92deg, #f5faff 0%, #f1f2fc 80%);
+        padding: 32px 38px 29px 38px;
+        text-align: center;
+    }
+    .main-card label, .main-card input, .main-card .stButton, .main-card select {
+        font-size: 1.13em;
+    }
+    .main-card .stButton > button {
+        font-size: 1.19em;
+        font-weight: 600;
+        border-radius: 14px !important;
+        padding: 13px 0px;
+        margin-top: 7px;
+        margin-bottom: 20px;
+        box-shadow: 0 1px 9px 0 #e2e7ef99;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+
+
+
 import streamlit as st
 import requests
 from bs4 import BeautifulSoup
