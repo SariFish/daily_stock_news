@@ -58,7 +58,6 @@ def summarize_news(news_items, openai_api_key, lang="he", stock=None):
     for item in news_items:
         stories += f"{item['idx']}. {item['title']}\n{item['desc']}\n\n"
     if stock:
-        # מודגש בקונטקסט שמדובר במניה/סימול
         if lang == "he":
             prompt = (
                 f"אתה עורך חדשות פיננסיות. להלן כותרות ותקצירים של חדשות מהיום על מניית {stock.upper()} (ממקורות שונים, ייתכן חפיפות). "
@@ -153,23 +152,48 @@ if user_pass != app_password:
 lang = st.radio("בחר שפת סיכום:", ["עברית", "English"], horizontal=True)
 lang_code = "he" if lang == "עברית" else "en"
 
+# ----------- כרטיס בחירה ממורכז ומעוצב -----------
 st.markdown(
     """
-    <div style='direction:rtl;text-align:right; margin-bottom:15px; margin-top:16px; font-size:1.17em; font-weight:bold;'>
-        באפשרותך לבחור:
-    </div>
+    <style>
+    .main-card {
+        direction: rtl;
+        margin: 0 auto 32px auto;
+        max-width: 410px;
+        min-width: 340px;
+        border-radius: 25px;
+        box-shadow: 0 2px 24px 0 #b1b1c18a;
+        background: linear-gradient(92deg, #f5faff 0%, #f1f2fc 80%);
+        padding: 30px 38px 23px 38px;
+        text-align: center;
+    }
+    .main-card label, .main-card input, .main-card .stButton, .main-card select {
+        font-size: 1.13em;
+    }
+    .main-card .stButton > button {
+        font-size: 1.17em;
+        font-weight: 600;
+        border-radius: 14px !important;
+        padding: 12px 0px;
+        margin-top: 5px;
+        margin-bottom: 12px;
+        box-shadow: 0 1px 9px 0 #e2e7ef99;
+    }
+    </style>
     """, unsafe_allow_html=True
 )
 
 with st.container():
-    cols = st.columns([2, 2, 3])
-    with cols[0]:
-        general_news = st.button("סיכום שוק כללי", use_container_width=True)
-    with cols[1]:
+    st.markdown("<div class='main-card'>", unsafe_allow_html=True)
+    st.markdown("<div style='font-size:1.17em; font-weight:bold; margin-bottom:12px;'>בחר אפשרות לסיכום:</div>", unsafe_allow_html=True)
+    st.markdown("")
+    colA, colB = st.columns([1, 1])
+    with colA:
+        general_news = st.button("סיכום שוק כללי")
+    with colB:
         stock_name = st.text_input("שם מניה (באנגלית או סימול):", value="", key="stock_input", placeholder="למשל: NVDA")
-        stock_news = st.button("סיכום עבור מניה זו", use_container_width=True)
-    with cols[2]:
-        st.markdown("")
+        stock_news = st.button("סיכום עבור מניה זו")
+    st.markdown("</div>", unsafe_allow_html=True)
 
 if general_news or stock_news:
     if general_news:
